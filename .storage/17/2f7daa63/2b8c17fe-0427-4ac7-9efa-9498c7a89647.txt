@@ -1,0 +1,7 @@
+$ cd /workspace/dashboard
+$ cd /workspace/dashboard && pnpm run lint
+
+
+> react-template@0.0.0 lint /workspace/dashboard
+> eslint ./src --quiet
+

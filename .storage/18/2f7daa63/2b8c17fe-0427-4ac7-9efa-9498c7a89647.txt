@@ -1,0 +1,29 @@
+$ cd /workspace/dashboard
+$ cd /workspace/dashboard && pnpm run lint
+
+
+> react-template@0.0.0 lint /workspace/dashboard
+> eslint ./src --quiet
+
+$ cd /workspace/dashboard && pnpm run build
+
+
+> react-template@0.0.0 build /workspace/dashboard
+> vite build
+
+vite v5.4.19 building for production...
+transforming...
+[vite:css] @import must precede all other statements (besides @charset or empty @layer)
+3  |  @tailwind utilities;
+4  |  
+5  |  @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Exo:wght@300;400;600;700&display=swap');
+   |  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+6  |  
+7  |  :root {
+✓ 38 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                   0.69 kB │ gzip:  0.41 kB
+dist/assets/index-b9CFV0tE.css   20.67 kB │ gzip:  4.91 kB
+dist/assets/index-DHreQS5G.js   172.47 kB │ gzip: 53.07 kB
+✓ built in 1.59s

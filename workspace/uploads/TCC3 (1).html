@@ -1,0 +1,1097 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Time Control Center v3.2 (Joule 2.0)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Exo:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    :root{
+      --bl-blue:#1A77D2; --bl-gold:#B1A96E; --bl-dark:#0D2240; --bl-white:#FFFFFF;
+      --bl-bg:#0b1c35; --bl-bg-2:#0F274B; --bl-muted:#8FA2BF;
+      --ok:#35C759; --warn:#ffb020; --err:#d94b4b; --shadow:0 10px 30px rgba(0,0,0,.25); --radius:18px;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{margin:0;background:radial-gradient(1200px 600px at 80% -10%, rgba(26,119,210,.25), transparent 60%),radial-gradient(1000px 500px at -10% 20%, rgba(177,169,110,.18), transparent 60%),var(--bl-bg);color:var(--bl-white);font-family:'Exo',system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
+
+    /* --- General UI --- */
+    .topbar{position:sticky;top:0;z-index:100;backdrop-filter:blur(10px);background:linear-gradient(180deg,rgba(13,34,64,.92),rgba(13,34,64,.70));border-bottom:1px solid rgba(255,255,255,.06);padding:10px 16px;display:grid;grid-template-columns:auto 1fr auto auto auto;gap:12px;align-items:center}
+    .hamburger{width:42px;height:42px;border-radius:12px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);display:flex;align-items:center;justify-content:center;cursor:pointer}
+    .hamburger span{display:block;width:18px;height:2px;background:#fff;position:relative}
+    .hamburger span:before,.hamburger span:after{content:"";position:absolute;left:0;width:18px;height:2px;background:#fff}
+    .hamburger span:before{top:-6px}.hamburger span:after{top:6px}
+    .brand-title{font-family:'Bebas Neue',sans-serif;letter-spacing:.6px;font-size:26px;margin:0;display:flex;align-items:center;gap:10px;}
+    .brand-title img{height:30px; border-radius:4px;}
+    .role{display:flex;gap:8px;align-items:center;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);padding:6px 10px;border-radius:12px}
+    .role select{background:transparent;color:var(--bl-white);border:0;outline:none;-webkit-appearance:none;appearance:none;padding-right:10px;}
+    .shell{display:grid; grid-template-columns:260px 1fr}
+    .sidebar{padding:16px;background:linear-gradient(0deg,rgba(13,34,64,.96),rgba(13,34,64,.88));border-right:1px solid rgba(255,255,255,.08);height:calc(100vh - 63px); position: sticky; top: 63px;}
+    .nav h4{font-family:'Bebas Neue',sans-serif;letter-spacing:.6px;color:var(--bl-gold);margin:6px 0 6px}
+    .nav a{display:flex;gap:10px;align-items:center;color:var(--bl-white);text-decoration:none;padding:10px 12px;border-radius:12px;margin:4px 0;border:1px solid transparent; transition: all .2s ease;}
+    .nav a:hover,.nav a.active{background:rgba(177,169,110,.12);border-color:rgba(177,169,110,.24); color: var(--bl-gold);}
+    .content{padding:18px 20px 40px}
+    .headline{display:flex;align-items:baseline;gap:12px;margin:10px 0 8px}
+    .headline h1{font-family:'Bebas Neue',sans-serif;letter-spacing:.8px;font-size:34px;margin:0}
+    .section{margin-top:26px}
+    .section .title{font-family:'Bebas Neue';font-size:26px;margin:4px 0 10px;color:var(--bl-gold)}
+    .card{background:linear-gradient(180deg,rgba(15,39,75,.9),rgba(10,26,49,.9));border:1px solid rgba(255,255,255,.06);border-radius:var(--radius);box-shadow:var(--shadow)}
+    .btn{background:linear-gradient(180deg,#C8C199,#B1A96E);color:#0A1730;font-weight:700;border:0;cursor:pointer;padding:8px 12px;border-radius:12px;box-shadow:var(--shadow);transition:transform .06s ease; display: inline-flex; align-items:center; gap: 6px;}
+    .btn:active{transform:translateY(1px)}
+    .btn.btn-ghost{background:rgba(255,255,255,.08);color:var(--bl-white);border:1px solid rgba(255,255,255,.12)}
+    .btn.btn-err{background:linear-gradient(180deg,#d94b4b,#b93b3b); color:white;}
+    .select,.input,textarea{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);color:var(--bl-white);padding:8px 10px;border-radius:12px;outline:none;width:100%}
+    .label{font-size:12px;color:var(--bl-gold);letter-spacing:.4px; margin-bottom: 6px; display: block;}
+    .muted{color:var(--bl-muted); font-size: 13px;}
+    .hidden{display:none !important}
+
+    .select option, select option {
+        background-color: #FFFFFF;
+        color: #0D2240;
+    }
+    
+    /* --- Modal & Wizard --- */
+    .modal{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;z-index:200; opacity:0; visibility:hidden; transition: all .3s ease;}
+    .modal.open{opacity:1; visibility:visible;}
+    .modal .overlay{position:absolute;inset:0;background:rgba(0,0,0,.55);backdrop-filter:blur(4px)}
+    .modal .panel{position:relative;width:min(900px,92vw);max-height:90vh;overflow:auto;background:var(--bl-bg-2);border:1px solid rgba(255,255,255,.12);border-radius:16px;box-shadow:var(--shadow); display:flex; flex-direction:column;}
+    .wizard-header{padding:16px;border-bottom:1px solid rgba(255,255,255,.08); font-family: 'Bebas Neue'; font-size: 24px; letter-spacing: .6px;}
+    .wizard-body{padding:20px; flex:1; overflow-y:auto;}
+    .wizard-steps{display:flex; gap:10px; border-bottom: 1px solid rgba(255,255,255,.1); padding-bottom: 12px; margin-bottom: 16px;}
+    .wizard-step{padding:8px 12px; border-radius: 99px; border: 1px solid rgba(255,255,255,.2); color: var(--bl-muted); font-size: 14px;}
+    .wizard-step.active{border-color: var(--bl-gold); color: var(--bl-gold); background: rgba(177,169,110,.1);}
+    .wizard-content .step-pane{display:none;}
+    .wizard-content .step-pane.active{display:block; animation: fadeIn .5s;}
+    @keyframes fadeIn{from{opacity:0} to{opacity:1}}
+    .wizard-footer{padding:16px;border-top:1px solid rgba(255,255,255,.08); display:flex; justify-content:space-between;}
+    .form-grid{display:grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 16px;}
+
+    /* --- Dashboard Widgets --- */
+    .kpis{display:grid;gap:12px;grid-template-columns:repeat(auto-fit, minmax(200px, 1fr))}
+    .card.kpi{padding:14px;position:relative;overflow:hidden}
+    .kpi-title{font-size:12px;color:var(--bl-muted)}
+    .kpi-value{font-family:'Bebas Neue',sans-serif;font-size:40px;line-height:1;margin-top:6px}
+    .widget-controls{position: absolute; top: 8px; right: 8px; display: none;}
+    .dashboard-grid.customizing .card .widget-controls{display: flex;}
+    .dashboard-grid.customizing .card{border-style: dashed;}
+    .widget-placeholder{border: 2px dashed rgba(255,255,255,.2); border-radius: var(--radius); display:flex; flex-direction: column; align-items: center; justify-content: center; min-height: 150px; text-align: center;}
+    
+    /* --- Table & Exceptions --- */
+    .table-wrap{overflow:auto;border-radius:var(--radius);border:1px solid rgba(255,255,255,.08)}
+    table{width:100%;border-collapse:collapse}
+    th,td{padding:10px 12px;border-bottom:1px solid rgba(255,255,255,.06);font-size:14px; white-space: nowrap;}
+    th{text-align:left;color:var(--bl-muted);background:rgba(177,169,110,.06);position:sticky;top:0;backdrop-filter:blur(4px)}
+    tr:hover td{background:rgba(255,255,255,.03)}
+    .sev{padding:4px 8px;border-radius:999px;font-size:12px; font-weight: 600;}
+    .sev.error{background:rgba(217,75,75,.16);color:#ff9e9e;border:1px solid rgba(217,75,75,.35)}
+    .sev.warn{background:rgba(255,176,32,.12);color:#ffd58f;border:1px solid rgba(255,176,32,.4)}
+    
+    /* --- Joule 2.0 Assistant --- */
+    .joule-fab {
+        position: fixed;
+        bottom: 25px;
+        right: 25px;
+        width: 60px;
+        height: 60px;
+        background: linear-gradient(45deg, var(--bl-blue), #2c97f5);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: var(--shadow);
+        cursor: pointer;
+        z-index: 150;
+        transition: transform .2s ease;
+    }
+    .joule-fab:hover { transform: scale(1.1); }
+    .joule-fab img { width: 32px; height: 32px; filter: drop-shadow(0 2px 3px rgba(0,0,0,.3)); }
+    .joule-chat-panel {
+        position: fixed;
+        bottom: 100px;
+        right: 25px;
+        width: min(400px, 90vw);
+        height: 60vh;
+        max-height: 600px;
+        background: var(--bl-bg-2);
+        border: 1px solid rgba(255,255,255,.1);
+        border-radius: var(--radius);
+        box-shadow: var(--shadow);
+        z-index: 140;
+        display: flex;
+        flex-direction: column;
+        transform: translateY(20px) scale(0.95);
+        opacity: 0;
+        visibility: hidden;
+        transition: all .3s ease-out;
+    }
+    .joule-chat-panel.open {
+        transform: translateY(0) scale(1);
+        opacity: 1;
+        visibility: visible;
+    }
+    .joule-header { padding: 12px 16px; font-family: 'Bebas Neue'; letter-spacing: .6px; font-size: 22px; border-bottom: 1px solid rgba(255,255,255,.1); display:flex; align-items:center; gap:10px; }
+    .joule-messages { flex: 1; padding: 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; }
+    .joule-input { padding: 12px; border-top: 1px solid rgba(255,255,255,.1); display: flex; gap: 8px; }
+    .msg-bubble { padding: 10px 14px; border-radius: 16px; max-width: 85%; line-height: 1.4; font-size: 14px; }
+    .msg-bubble.user { background: var(--bl-blue); color: white; align-self: flex-end; border-bottom-right-radius: 4px; }
+    .msg-bubble.joule { background: var(--bl-dark); border: 1px solid rgba(255,255,255,.1); align-self: flex-start; border-bottom-left-radius: 4px; }
+    .msg-bubble.joule-action .action-buttons { margin-top: 12px; display: flex; flex-wrap: wrap; gap: 8px; }
+    .msg-bubble.joule-action .btn-action { font-size: 13px; padding: 6px 10px; background: rgba(26, 119, 210, 0.2); border: 1px solid var(--bl-blue); color: var(--bl-white); }
+
+    /* --- Manager Calendar View --- */
+    .calendar-grid{display:grid; grid-template-columns: 180px repeat(7, 1fr); border: 1px solid rgba(255,255,255,.1); border-radius: var(--radius); overflow: hidden;}
+    .calendar-header{text-align: center; padding: 10px; background: rgba(177,169,110,.06); font-weight: 600;}
+    .calendar-emp{padding: 10px; border-right: 1px solid rgba(255,255,255,.1); font-weight: 600; font-size: 14px;}
+    .calendar-day{border-top: 1px solid rgba(255,255,255,.1); padding: 8px; min-height: 80px; cursor: pointer; transition: background .2s ease;}
+    .calendar-day:hover{background: rgba(255,255,255,.1);}
+    .cal-badge{display: block; font-size: 11px; padding: 3px 6px; border-radius: 6px; margin-top: 4px; text-align: center;}
+    .cal-badge.pending{background: var(--warn); color: var(--bl-dark);}
+    .cal-badge.exception{background: var(--err); color: var(--bl-white);}
+    .cal-badge.approved{background: var(--ok); color: var(--bl-dark);}
+
+    /* --- Rule Builder --- */
+    .rule-builder{background:rgba(0,0,0,.15); padding:16px; border-radius: var(--radius);}
+    .rule-block{background: var(--bl-bg); padding: 12px; border-radius: 12px; margin-bottom: 12px; border: 1px solid rgba(255,255,255,.1);}
+    .rule-line{display:flex; align-items:center; gap: 8px; margin-bottom: 8px;}
+    .rule-line .select, .rule-line .input {width: auto; flex: 1;}
+    .rule-line-joiner{font-weight: 700; color: var(--bl-gold); margin: 8px 0;}
+
+    /* --- Audit Diff --- */
+    .audit-diff-view{display:grid; grid-template-columns: 1fr 1fr; gap: 16px;}
+    .diff-panel{background:rgba(0,0,0,.2); padding: 12px; border-radius: 12px;}
+    .diff-panel h4{margin:0 0 10px; font-family: 'Bebas Neue'; color: var(--bl-gold);}
+    .diff-line{display:grid; grid-template-columns: 100px 1fr; font-size: 14px; margin-bottom: 6px;}
+    .diff-line strong{color: var(--bl-muted);}
+    .diff-line .changed{color: var(--warn); font-weight: 700;}
+
+    /* --- Notifications --- */
+    .notifications{position:relative;}
+    .notification-count{position:absolute; top:-2px; right:-2px; background:var(--err); color:white; width:16px; height:16px; border-radius:50%; font-size:10px; font-weight:700; display:flex; align-items:center; justify-content:center;}
+    .notification-panel{position:absolute; top: 52px; right:0; width: 360px; background: var(--bl-bg-2); border: 1px solid rgba(255,255,255,.1); border-radius:var(--radius); box-shadow:var(--shadow); z-index:110; opacity:0; visibility:hidden; transition: all .3s ease; transform: translateY(10px);}
+    .notification-panel.open{opacity:1; visibility:visible; transform: translateY(0);}
+    .notification-header{padding:12px; border-bottom:1px solid rgba(255,255,255,.1); font-weight:700;}
+    .notification-item{padding:12px; display:flex; gap:10px; align-items:flex-start; font-size:13px; border-bottom:1px solid rgba(255,255,255,.06);}
+    .notification-item:hover{background: rgba(255,255,255,.05);}
+    .notification-item .icon{font-size:18px; color: var(--bl-gold);}
+    .notification-item .time{font-size:11px; color:var(--bl-muted); margin-top:4px;}
+
+  </style>
+</head>
+<body>
+
+  <div class="modal" id="onboardingWizard">
+    <div class="overlay" data-action="close-wizard"></div>
+    <div class="panel">
+      <div class="wizard-header">Asistente de Configuración Inicial</div>
+      <div class="wizard-body">
+        <div class="wizard-steps">
+          <div class="wizard-step active" data-step="1">1. Datos de Compañía</div>
+          <div class="wizard-step" data-step="2">2. Políticas de Cierre</div>
+          <div class="wizard-step" data-step="3">3. Reglas Esenciales</div>
+          <div class="wizard-step" data-step="4">4. ¡Listo!</div>
+        </div>
+        <div class="wizard-content">
+          <div class="step-pane active" data-pane="1">
+            <h4>Bienvenido a Time Control Center. Empecemos.</h4>
+            <p class="muted">Define las compañías y países que gestionarás con esta herramienta.</p>
+            <div class="form-grid">
+              <div>
+                <label class="label">País Principal</label>
+                <select class="select"><option>Argentina</option><option>Chile</option><option>Perú</option></select>
+              </div>
+              <div>
+                <label class="label">Compañía Principal</label>
+                <input type="text" class="input" value="BlatoRH AR S.A.">
+              </div>
+            </div>
+          </div>
+          <div class="step-pane" data-pane="2">
+            <h4>Políticas Principales de Cierre</h4>
+            <p class="muted">Selecciona los períodos de cierre de tiempo más comunes en tu organización.</p>
+            <div class="form-grid">
+              <div>
+                <label class="label">Frecuencia de Cierre</label>
+                <select class="select"><option>Semanal</option><option>Quincenal</option><option selected>Mensual</option></select>
+              </div>
+              <div>
+                <label class="label">Día de Cierre Semanal</label>
+                <select class="select"><option>Viernes</option><option>Sábado</option><option>Domingo</option></select>
+              </div>
+            </div>
+          </div>
+          <div class="step-pane" data-pane="3">
+            <h4>Reglas Esenciales</h4>
+            <p class="muted">Te sugerimos activar este set de reglas básicas para empezar a controlar la calidad del dato.</p>
+            <div style="display:flex; flex-direction:column; gap:8px;">
+              <label><input type="checkbox" checked> Fichada inexistente / hoja no enviada</label>
+              <label><input type="checkbox" checked> Horas extra > umbral diario (2hs)</label>
+              <label><input type="checkbox" checked> Ausencia sin saldo suficiente</label>
+              <label><input type="checkbox"> Tolerancia de fichada superada (10min)</label>
+            </div>
+          </div>
+          <div class="step-pane" data-pane="4">
+            <h4>🚀 ¡Configuración completada!</h4>
+            <p class="muted">Has finalizado la configuración inicial. Ya puedes empezar a utilizar Time Control Center.<br>Puedes ajustar estos y otros parámetros más adelante en la sección de Configuración.</p>
+          </div>
+        </div>
+      </div>
+      <div class="wizard-footer">
+        <button class="btn btn-ghost" id="wizardPrev" style="visibility:hidden;">Anterior</button>
+        <button class="btn" id="wizardNext">Siguiente</button>
+        <button class="btn hidden" id="wizardFinish" data-action="close-wizard">Finalizar</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="auditModal">
+    <div class="overlay" data-action="close-audit-modal"></div>
+    <div class="panel">
+       <div class="wizard-header" style="display:flex; justify-content:space-between; align-items:center;">
+        Detalle de Auditoría
+        <button class="btn btn-ghost" data-action="close-audit-modal">Cerrar</button>
+      </div>
+      <div class="wizard-body">
+        <div class="muted">Reconstrucción del evento <b id="auditEventId">#12345</b></div>
+        <div class="audit-diff-view" style="margin-top:16px;">
+          <div class="diff-panel">
+            <h4>Valores Anteriores</h4>
+            <div id="auditBefore"></div>
+          </div>
+          <div class="diff-panel">
+            <h4>Valores Nuevos</h4>
+            <div id="auditAfter"></div>
+          </div>
+        </div>
+        <div class="card" style="margin-top:16px; padding:16px;">
+            <b>Metadata del Cambio:</b>
+            <div id="auditMetadata" style="margin-top:8px;"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+  <header class="topbar">
+    <div class="hamburger"><span></span></div>
+    <div class="brand-title">
+        <img id="clientLogo" src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjU2cHgiIGhlaWdodD0iMjU2cHgiIHZpZXdCb3g9IjAgMCAxNiAxNiIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiBmaWxsPSIjMDAwMDAwIj48cGF0aCBmaWxsPSIjYjFhOTZlIiBkPSJNOCAwYTEgMSAwIDAgMCAtMSAxVjIuMDdBMy4wMDIgMy4wMDIgMCAwIDAgMy41IDEuNUwzLjEyMSAxLjA3NmExIDEgMCAwIDAgLTEuNDU3IDEuMzY4TDIsMi41QTUgNSAwIDAgMSA3IDN2MWExIDEgMCAwIDAgMiAwVjNhNSA1IDAgMCAxIDUgMi41bC4zMzYtLjA3NmExIDEgMCAwIDAgLTEuMzY4LTEuNDU3TDEyLjUgMS41QTMuMDAyIDMuMDAyIDAgMCAwIDkgMi4wN1YxYTEgMSAwIDAgMCAtMSAwWm0wIDYuNWEyLjUgMi41IDAgMSAwIDAgNSA1IDIuNSAyLjUgMCAwIDAgMCAtNVptMCAyYTMuNSA4LjUgMCAxIDAgMCAxIDMgMy41IDguNSAwIDAgMCAwIC0xWm02Ljk5IDEuODQyYTEgMSAwIDEgMCAxLjM2OC0xLjQ1NkwxNS41IDguNUE1IDUgMCAwIDEgMTMgMTFIOVYuMDY2QTMuMDAyIDMuMDAyIDAgMCAwIDcgMy41NzNWNC41YTEgMSAwIDAgMCAwIDIgMy41IDguNSAwIDAgMSAwIC0zdi0xYTUgNSAwIDAgMSAyLjUtMmwzLjQxNCAxLjMzNmExIDEgMCAwIDAgLjA3OCAxLjY1M1ptLTIuNDEgMS4zMjVhMy4wMDIgMy4wMDIgMCAwIDAgMi4zNTMtMS4wOTVMOSAxMy45MzRWMTRhMSAxIDAgMCAwIDIgMHYtMS40MjdsMS41ODEgMi4yODNhMSAxIDAgMSAwIDEuNjQzLTEuMTM4bC0xLjY3Ni0yLjQyMUE1IDUgMCAwIDEgNyAxMWwtMi40MTYgMy4zMzZhMSAxIDAgMSAwIDEuNjQzIDEuMTM4TDggMTMuNVptLTYuMTY0LTIuNDE0YTEgMSAwIDAgMCAuMDc4LTEuNjUzTDcgNSAyLjUgMy41NzIgMiA0LjVhNSA1IDAgMCAxIDAgLTN2MUExIDEgMCAwIDAgMyA2LjV2LTFBMy4wMDIgMy4wMDIgMCAwIDAgMCA5aDRhNSA1IDAgMCAxIC44My0yLjc0N1ptLjMzOCAzLjQ5NWExIDEgMSAwIDEgMC0xLjM2OCAxLjQ1N2wxLjg1LTEuNDQ3QTMgMyAwIDAgMCAwIDEzaDF2MWExIDEgMCAwIDAgMiAwdjEuNDI3TDQuNDIgOS43MTdhMSAxIDAgMSAwLTEuNjQzIDEuMTM4bDEuNjM4IDIuMzgyQTUgNSAwIDAgMSA5IDExSDMuMDY2WiIvPjwvcGF0aD48L3N2Zz4=" alt="Client Logo">
+        <span id="clientName">Time Control Center</span>
+    </div>
+
+    <div class="role">
+      <select id="roleSelect" class="select">
+        <option value="Manager">Rol: Manager</option>
+        <option value="HR">Rol: HR</option>
+        <option value="Config">Rol: Configurador</option>
+      </select>
+    </div>
+    <div class="notifications">
+      <button class="btn btn-ghost" id="notificationBell" data-action="toggle-notifications">
+        <span>🔔</span>
+        <span class="notification-count" id="notificationCount">0</span>
+      </button>
+      <div class="notification-panel" id="notificationPanel">
+        <div class="notification-header">Notificaciones</div>
+        <div id="notificationList"></div>
+      </div>
+    </div>
+    <button class="btn" id="btnActualizar">⚡ Actualizar Datos (Online)</button>
+  </header>
+
+  <div class="shell">
+    <aside class="sidebar">
+      <nav class="nav" id="mainNav">
+        <a href="#dashboard" class="active" data-nav="dashboard">📊 Dashboard</a>
+        <a href="#excepciones" data-nav="excepciones">⚠️ Excepciones</a>
+        <a href="#aprobaciones" data-nav="aprobaciones">👍 Aprobaciones</a>
+        <a href="#auditoria" data-nav="auditoria">🔎 Auditoría</a>
+        <a href="#config" data-nav="config" class="hidden">⚙️ Configuración</a>
+      </nav>
+    </aside>
+
+    <main class="content">
+      
+      <div class="page" id="page-dashboard">
+        <div class="headline">
+          <h1>Dashboard</h1>
+          <button class="btn btn-ghost" data-action="toggle-customize-dash">🎨 Personalizar Panel</button>
+        </div>
+        <div class="kpis dashboard-grid" id="kpiGrid"></div>
+      </div>
+
+      <div class="page hidden" id="page-excepciones">
+        <div class="headline"><h1>Cola de Excepciones</h1></div>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+            <div style="display:flex; gap:10px;">
+                <select class="select" id="filtroSeveridad" style="width:auto;"><option value="">Severidad: Todas</option><option value="error">Error</option><option value="warn">Warning</option></select>
+                <select class="select" id="filtroEstado" style="width:auto;"><option value="">Estado: Todos</option><option value="open">Abierto</option><option value="res">Resuelto</option></select>
+            </div>
+            <div id="batchActions" class="hidden" style="display:flex; gap:10px;">
+                <button class="btn" data-action="batch-resolve">✔️ Marcar como Resuelto</button>
+                <button class="btn btn-err" data-action="batch-reject">❌ Rechazar y Notificar</button>
+            </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr>
+              <th style="width:28px"><input type="checkbox" data-action="select-all-exceptions" /></th>
+              <th>Empleado</th><th>Fecha</th><th>Regla</th><th>Severidad</th><th>Estado</th><th style="width:200px">Acciones</th>
+            </tr></thead>
+            <tbody id="tbodyExcepciones"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="page hidden" id="page-aprobaciones">
+        <div class="headline" style="justify-content:space-between">
+            <h1>Centro de Aprobaciones</h1>
+            <div id="view-toggle-aprobaciones">
+                <button class="btn" data-view="cards">🃏 Vista Tarjetas</button>
+                <button class="btn btn-ghost" data-view="calendar">📅 Vista Calendario</button>
+            </div>
+        </div>
+        <div id="approvals-cards-view">
+            <div class="cards-row" id="cardsAprobacion" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(300px, 1fr)); gap:12px;"></div>
+        </div>
+        <div id="approvals-calendar-view" class="hidden" style="margin-top:20px;">
+            <div class="calendar-grid" id="calendarGrid"></div>
+        </div>
+      </div>
+
+      <div class="page hidden" id="page-auditoria">
+        <div class="headline"><h1>Auditoría y Trazabilidad</h1></div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Fecha/Hora</th><th>Usuario</th><th>Acción</th><th>Detalle</th><th></th></tr></thead>
+            <tbody id="tbodyAuditoria"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="page hidden" id="page-config">
+        <div class="headline"><h1>Configuración de Sistema</h1></div>
+        
+        <section class="section">
+            <h2 class="title">Branding y Personalización</h2>
+            <div class="card" style="padding:16px;">
+                <div class="form-grid">
+                    <div>
+                        <label class="label">Logo del Cliente (PNG, JPG, SVG)</label>
+                        <input type="file" class="input" id="logoUploader" accept="image/*">
+                    </div>
+                    <div>
+                        <label class="label">PDF con Guía de Branding</label>
+                        <input type="file" class="input" id="brandingUploader" accept=".pdf">
+                    </div>
+                    <div style="align-self:end;">
+                        <button class="btn" data-action="apply-branding">✨ Aplicar Branding</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+        
+        <section class="section">
+            <h2 class="title">Conexión con SuccessFactors</h2>
+            <div class="card" style="padding:16px;">
+                <div id="sf-config-form">
+                    <p class="muted">Ingresa los datos de tu instancia de SuccessFactors para la sincronización de datos en tiempo real.</p>
+                    <div class="form-grid">
+                        <div><label class="label">URL de la API OData</label><input type="text" class="input" value="https://api.successfactors.com/odata/v2"></div>
+                        <div><label class="label">Contraseña de Usuario Técnico</label><input type="password" class="input" value="••••••••"></div>
+                        <div style="align-self:end; display:flex; gap:10px;">
+                            <button class="btn btn-ghost" data-action="test-sf-connection">📡 Probar Conexión</button>
+                            <button class="btn" data-action="save-sf-connection">Guardar</button>
+                        </div>
+                    </div>
+                </div>
+                <div id="sf-config-summary" class="hidden">
+                    <p>✅ Conexión con SuccessFactors configurada y activa.</p>
+                    <button class="btn btn-ghost" data-action="edit-sf-connection">Editar Conexión</button>
+                </div>
+            </div>
+        </section>
+
+        <section class="section">
+            <h2 class="title">Constructor de Reglas (No-Code)</h2>
+            <div class="rule-builder">
+                <div class="form-grid">
+                    <div><label class="label">Nombre de la Regla</label><input type="text" class="input" id="ruleName" placeholder="Ej: Horas extra excesivas en fin de semana"></div>
+                    <div><label class="label">Severidad</label><select class="select" id="ruleSev"><option value="warn">Warning</option><option value="error">Error</option></select></div>
+                </div>
+                <hr style="border-color: rgba(255,255,255,.1); margin: 16px 0;">
+                
+                <div id="rule-conditions">
+                    <div class="rule-line" data-condition-id="1">
+                        <b style="color:var(--bl-gold)">SI</b>
+                        <select class="select"><option>Horas extra</option><option>Tipo de ausencia</option><option>Día de la semana</option></select>
+                        <select class="select"><option>es mayor que</option><option>es igual a</option><option>no está en la lista</option></select>
+                        <input type="text" class="input" placeholder="Valor" style="flex:0.5;">
+                        <select class="select" style="flex:0.5;"><option>Horas</option><option>Minutos</option><option>Días</option></select>
+                        <button class="btn btn-err" data-action="remove-rule-condition">X</button>
+                    </div>
+                </div>
+                
+                <div style="margin: 12px 0; display:flex; gap: 10px;">
+                    <button class="btn btn-ghost" data-action="add-rule-condition">➕ Añadir Condición (Y)</button>
+                </div>
+
+                <b>ENTONCES:</b> Generar una excepción con el mensaje:
+                <textarea class="input" style="margin-top:8px; height: 60px;" placeholder="Ej: El empleado superó el límite de horas extra para un sábado."></textarea>
+                
+                <div style="margin-top:16px; text-align:right;">
+                    <button class="btn">💾 Guardar Nueva Regla</button>
+                </div>
+            </div>
+            <h3 class="title" style="font-size: 22px; margin-top:20px;">Reglas Activas</h3>
+            <div class="table-wrap">
+                <table>
+                    <thead><tr><th>Regla</th><th>Dominio</th><th>Severidad</th><th>Estado</th><th>Acciones</th></tr></thead>
+                    <tbody id="tbodyReglas"></tbody>
+                </table>
+            </div>
+        </section>
+      </div>
+      
+    </main>
+  </div>
+
+  <!-- Joule 2.0 Assistant Elements -->
+  <div class="joule-fab" data-action="toggle-joule">
+    <img src="data:image/svg+xml;base64,PHN2ZyB2aWV3Qm94PSIwIDAgMjQgMjQiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHBhdGggZD0iTTEyIDJDNi40OCAyIDIgNi40OCAyIDEyczQuNDggMTAgMTAgMTAgMTAtNC40OCAxMC0xMFMxNy41MiAyIDEyIDJ6bTAgMTVjLTIuNzYgMC01LTIuMjQtNS01czIuMjQtNSA1LTUgNSAyLjI0IDUgNS0yLjI0IDUtNSA1eiIgZmlsbD0iIzFBNzdEMiIvPjxwYXRoIGQ9Ik0xMiA3Yy0yLjc2IDAtNSAyLjI0LTUgNXM1IDUgNSAyLjI0IDUtNS0yLjI0LTUtNXptMCA4YzEuNjYgMCAzLTEuMzQgMy0zcy0xLjM0LTMtMy0zLTMgMS4zNC0zIDMgMS4zNCAzIDMgM3oiIGZpbGw9IiNiMWE5NmUiLz48L3N2Zz4=" alt="Joule Assistant">
+  </div>
+  <div class="joule-chat-panel" id="jouleChatPanel">
+    <div class="joule-header">
+        <img src="data:image/svg+xml;base64,PHN2ZyB2aWV3Qm94PSIwIDAgMjQgMjQiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHBhdGggZD0iTTEyIDJDNi40OCAyIDIgNi40OCAyIDEyczQuNDggMTAgMTAgMTAgMTAtNC40OCAxMC0xMFMxNy41MiAyIDEyIDJ6bTAgMTVjLTIuNzYgMC01LTIuMjQtNS01czIuMjQtNSA1LTUgNSAyLjI0IDUgNS0yLjI0IDUtNSA1eiIgZmlsbD0iIzFBNzdEMiIvPjxwYXRoIGQ9Ik0xMiA3Yy0yLjc2IDAtNSAyLjI0LTUgNXM1IDUgNSAyLjI0IDUtNS0yLjI0LTUtNXptMCA4YzEuNjYgMCAzLTEuMzQgMy0zcy0xLjM0LTMtMy0zLTMgMS4zNC0zIDMgMS4zNCAzIDMgM3oiIGZpbGw9IiNiMWE5NmUiLz48L3N2Zz4=" alt="Joule Assistant" width="24">
+        Asistente Joule
+    </div>
+    <div class="joule-messages" id="jouleMessages"></div>
+    <div class="joule-input">
+        <input type="text" class="input" id="jouleUserInput" placeholder="Pregúntame algo...">
+        <button class="btn" id="jouleSendBtn">Enviar</button>
+    </div>
+  </div>
+
+
+<script>
+// ======================================================
+// MOCK DATA + APP STATE
+// ======================================================
+const AppState = {
+  role: 'Manager', // 'Manager', 'HR', 'Config'
+  notifications: [],
+  data: {},
+  charts: {},
+  ui: {
+    wizardStep: 1,
+    currentPage: 'dashboard',
+    customizeDashboard: false,
+    notificationPanelOpen: false,
+    jouleOpen: false,
+    jouleMessages: []
+  }
+};
+
+const MOCK_DB = {
+  paises: ['Argentina', 'Chile', 'Perú'],
+  cias: {'Argentina': ['BlatoRH AR', 'Cliente A AR'],'Chile': ['BlatoRH CL'],'Perú': ['BlatoRH PE']},
+  areas: ['Operaciones', 'RRHH', 'IT', 'Ventas', 'Soporte'],
+  managers: ['Carlos López', 'María Pérez', 'J. Ramírez'],
+  empleados: [],
+  excepciones: [],
+  aprobaciones: [],
+  reglas: [
+    {id:'R1', nombre:'Fichada inexistente', dominio:'Time Sheet', sev:'error', on:true},
+    {id:'R2', nombre:'Horas extra > umbral diario', dominio:'Overtime', sev:'warn', on:true},
+    {id:'R3', nombre:'Ausencia sin saldo', dominio:'Time Off', sev:'error', on:true},
+  ],
+  auditoria: [],
+  widgets: [
+      { id: 'kpi1', title: '% Hojas completas', role: ['HR', 'Manager'] },
+      { id: 'kpi2', title: '% Hojas aprobadas', role: ['HR', 'Manager'] },
+      { id: 'kpi3', title: 'Horas extra totales', role: ['HR', 'Manager'] },
+      { id: 'kpi4', title: '% Ausencias sin saldo', role: ['HR'] },
+      { id: 'kpi5', title: 'Fichadas incompletas/emp', role: ['HR'] },
+      { id: 'kpi6', title: 'Tiempo prom. de aprobación', role: ['HR'] },
+      { id: 'kpi7', title: 'Excepciones Abiertas', role: ['HR', 'Manager'] },
+      { id: 'kpi8', title: 'Costo OT Proyectado', role: ['HR'] },
+      { id: 'chart1', title: 'Horas extra por Área', type: 'chart', role: ['HR'] },
+      { id: 'chart2', title: 'Distribución de Ausencias', type: 'chart', role: ['HR', 'Manager'] }
+  ]
+};
+
+// ======================================================
+// UTILITY & DATA GENERATION FUNCTIONS
+// ======================================================
+const $ = (selector) => document.querySelector(selector);
+const $$ = (selector) => document.querySelectorAll(selector);
+const rand = (min, max) => Math.random() * (max - min) + min;
+const randint = (min, max) => Math.floor(rand(min, max + 1));
+const sample = (arr) => arr[randint(0, arr.length - 1)];
+const fmtDate = (d) => d.toISOString().slice(0, 10);
+
+function generateMockData() {
+    MOCK_DB.empleados = [];
+    let id = 1000;
+    for (const p of MOCK_DB.paises) {
+        for (const c of MOCK_DB.cias[p]) {
+            for (let i = 0; i < 8; i++) {
+                MOCK_DB.empleados.push({
+                    id: id++,
+                    nombre: ['Paula','Lucas','Martín','Lucía','Rodolfo','Sofía','Nico','Carla'][i % 8] + ' ' + ['Gómez','Díaz','Torres','Sosa','Fernández','Molina'][i % 6],
+                    pais: p, compania: c, area: sample(MOCK_DB.areas), manager: sample(MOCK_DB.managers)
+                });
+            }
+        }
+    }
+
+    MOCK_DB.excepciones = [];
+    MOCK_DB.aprobaciones = [];
+    const hoy = new Date();
+    // Ensure at least one actionable exception for Joule
+    const actionableEmp = sample(MOCK_DB.empleados);
+    const fechaActionable = new Date(hoy); fechaActionable.setDate(hoy.getDate() - 2);
+    MOCK_DB.excepciones.push({
+        id: crypto.randomUUID(), empId: actionableEmp.id, fecha: fmtDate(fechaActionable), regla: 'Fichada inexistente', sev: 'error',
+        estado: 'open', jouleActionable: true
+    });
+
+    for(const e of MOCK_DB.empleados) {
+        if (Math.random() < 0.4) {
+             const fecha = new Date(hoy); fecha.setDate(hoy.getDate() - randint(1, 7));
+             const regla = sample(MOCK_DB.reglas);
+             MOCK_DB.excepciones.push({
+                 id: crypto.randomUUID(), empId: e.id, fecha: fmtDate(fecha), regla: regla.nombre, sev: regla.sev,
+                 estado: Math.random() < 0.7 ? 'open' : 'res',
+                 jouleActionable: regla.id === 'R1' && Math.random() > 0.6
+             });
+        }
+        MOCK_DB.aprobaciones.push({ empId: e.id, horas: randint(35,48), ot: randint(0,8), estado: sample(['pending', 'approved', 'draft']) });
+    }
+    
+    MOCK_DB.auditoria = [];
+    for(let i=0; i<15; i++) {
+        const e = sample(MOCK_DB.empleados);
+        const action = sample(['UPDATE', 'APPROVE', 'RESOLVE']);
+        MOCK_DB.auditoria.push({
+            id: `AU${randint(10000,99999)}`,
+            when: new Date(Date.now() - randint(0, 72) * 3600 * 1000).toLocaleString(),
+            usuario: sample(['hr_admin', 'mng_lopez']),
+            accion: action,
+            detalle: `${action === 'UPDATE' ? 'Ajuste de horas' : 'Resolución de excepción'} de ${e.nombre}`,
+            before: { Horas: 8, Estado: 'Enviado' },
+            after: { Horas: 9.5, Estado: 'Aprobado' }
+        });
+    }
+    AppState.data = MOCK_DB;
+}
+
+// ======================================================
+// RENDERING FUNCTIONS
+// ======================================================
+function renderAll() {
+    const role = AppState.role;
+    // Show/hide nav links based on role
+    $('[data-nav="config"]').classList.toggle('hidden', role !== 'Config');
+    
+    // Show/hide pages based on current page
+    $$('.page').forEach(p => p.classList.add('hidden'));
+    $(`#page-${AppState.ui.currentPage}`).classList.remove('hidden');
+
+    // Render components for the current page
+    switch(AppState.ui.currentPage) {
+        case 'dashboard':
+            renderDashboard();
+            renderCharts();
+            break;
+        case 'excepciones':
+            renderExcepciones();
+            break;
+        case 'aprobaciones':
+            if (role === 'Manager') {
+                $('#view-toggle-aprobaciones').classList.remove('hidden');
+                renderAprobacionesCards();
+                renderManagerCalendar();
+            } else {
+                 $('#view-toggle-aprobaciones').classList.add('hidden');
+                 renderAprobacionesCards();
+            }
+            break;
+        case 'auditoria':
+            renderAuditoria();
+            break;
+        case 'config':
+            renderReglas();
+            break;
+    }
+    renderNotifications();
+    renderJouleChat();
+}
+
+function renderDashboard() {
+    const grid = $('#kpiGrid');
+    grid.innerHTML = '';
+    const isCustomizing = AppState.ui.customizeDashboard;
+    grid.classList.toggle('customizing', isCustomizing);
+
+    const visibleWidgets = AppState.data.widgets.filter(w => w.role.includes(AppState.role));
+
+    visibleWidgets.forEach(w => {
+        if (w.type === 'chart') {
+            grid.innerHTML += `
+              <div class="card" style="grid-column: span 2;">
+                <div class="label" style="margin:12px 12px 0;">${w.title}</div>
+                <canvas id="${w.id}" style="padding: 12px; height: 180px !important;"></canvas>
+                <div class="widget-controls"><button class="btn btn-err btn-sm" data-action="remove-widget" data-widget-id="${w.id}">X</button></div>
+              </div>`;
+        } else {
+             grid.innerHTML += `
+              <div class="card kpi">
+                <div class="kpi-title">${w.title}</div>
+                <div class="kpi-value">${randint(80,99)}.${randint(0,9)}%</div>
+                <div class="widget-controls"><button class="btn btn-err btn-sm" data-action="remove-widget" data-widget-id="${w.id}">X</button></div>
+              </div>`;
+        }
+    });
+
+    if (isCustomizing) {
+        grid.innerHTML += `<div class="widget-placeholder"><div class="label">Añadir widget</div><button class="btn" data-action="add-widget">+</button></div>`;
+    }
+}
+
+function renderCharts() {
+    if (AppState.charts.ot) AppState.charts.ot.destroy();
+    if (AppState.charts.aus) AppState.charts.aus.destroy();
+    
+    if ($('#chart1')) {
+        const ctx1 = $('#chart1').getContext('2d');
+        AppState.charts.ot = new Chart(ctx1, {
+            type: 'bar', data: { labels: AppState.data.areas, datasets: [{ label: 'Horas extra', data: AppState.data.areas.map(()=>randint(10,80)), backgroundColor: 'rgba(177,169,110,.5)', borderColor: 'var(--bl-gold)' }] },
+            options: { plugins: { legend: { display: false } }, scales: { x: { grid: { color: 'rgba(255,255,255,.08)' }, ticks: {color: '#cfd9ea'} }, y: { ticks: { color: '#cfd9ea' }, grid: { color: 'rgba(255,255,255,.08)' } } } }
+        });
+    }
+    if ($('#chart2')) {
+        const ctx2 = $('#chart2').getContext('2d');
+        AppState.charts.aus = new Chart(ctx2, {
+            type: 'doughnut', data: { labels: ['Vacaciones', 'Enfermedad', 'Permiso'], datasets: [{ data: [randint(20,50), randint(10,30), randint(5,15)], backgroundColor: ['rgba(26,119,210,.7)', 'rgba(177,169,110,.7)', 'rgba(255,255,255,.3)'] }] },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: '#d6e2f5' } } } }
+        });
+    }
+}
+
+function renderExcepciones() {
+    const tbody = $('#tbodyExcepciones');
+    const byId = Object.fromEntries(AppState.data.empleados.map(e => [e.id, e]));
+    tbody.innerHTML = AppState.data.excepciones.slice(0, 50).map(r => {
+        const e = byId[r.empId];
+        let actionsHtml = `<button class="btn btn-ghost" data-action="view-exception" data-id="${r.id}">Ver</button>`;
+        if (r.jouleActionable && r.estado === 'open') {
+            actionsHtml = `<button class="btn" data-action="joule-resolve-exception" data-id="${r.id}">⚡ Resolver con Joule</button>`;
+        }
+        return `<tr data-id="${r.id}">
+          <td><input type="checkbox" class="exception-checkbox" data-id="${r.id}"></td>
+          <td>${e?.nombre || 'N/A'}</td>
+          <td>${r.fecha}</td>
+          <td>${r.regla}</td>
+          <td><span class="sev ${r.sev}">${r.sev.toUpperCase()}</span></td>
+          <td><span class="status ${r.estado}">${r.estado === 'open' ? 'Abierto' : 'Resuelto'}</span></td>
+          <td>${actionsHtml}</td>
+        </tr>`;
+    }).join('');
+}
+
+function renderManagerCalendar() {
+    const grid = $('#calendarGrid');
+    const myTeam = AppState.data.empleados.filter(e => e.manager === 'Carlos López').slice(0, 5);
+    const days = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+    
+    let html = '<div class="calendar-header">Empleado</div>';
+    days.forEach(d => html += `<div class="calendar-header">${d}</div>`);
+    
+    myTeam.forEach(emp => {
+        html += `<div class="calendar-emp">${emp.nombre}</div>`;
+        days.forEach(() => {
+            let content = '';
+            const roll = Math.random();
+            if (roll < 0.15) { // Pending approval
+                content = '<span class="cal-badge pending">Pendiente</span>';
+            } else if (roll < 0.25) { // Exception
+                content = '<span class="cal-badge exception">Excepción</span>';
+            } else if (roll < 0.7) {
+                content = '<span class="cal-badge approved">Aprobado</span>';
+            }
+            html += `<div class="calendar-day">${content}</div>`;
+        });
+    });
+    grid.innerHTML = html;
+}
+
+function renderAprobacionesCards() {
+    const container = $('#cardsAprobacion');
+    if (AppState.role !== 'HR') {
+         container.innerHTML = `<div class="card" style="padding:20px;"><p class="muted">La vista de tarjetas de aprobación está disponible para el rol de HR. Los managers usan la vista de calendario para una mejor gestión.</p></div>`;
+         return;
+    }
+    const approvals = AppState.data.aprobaciones.slice(0,9);
+    const byId = Object.fromEntries(AppState.data.empleados.map(e => [e.id, e]));
+    container.innerHTML = approvals.map(a => {
+        const e = byId[a.empId];
+        return `<div class="card" style="padding:14px;">${e?.nombre || 'N/A'} - ${a.estado}</div>`
+    }).join('');
+}
+
+function renderAuditoria() {
+    const tbody = $('#tbodyAuditoria');
+    tbody.innerHTML = AppState.data.auditoria.map(a => `
+        <tr>
+            <td>${a.when}</td>
+            <td>${a.usuario}</td>
+            <td>${a.accion}</td>
+            <td>${a.detalle}</td>
+            <td><button class="btn" data-action="view-audit-detail" data-id="${a.id}">Reconstruir</button></td>
+        </tr>
+    `).join('');
+}
+
+function renderReglas() {
+    const tbody = $('#tbodyReglas');
+    tbody.innerHTML = AppState.data.reglas.map(r => `
+        <tr>
+          <td>${r.nombre}</td><td>${r.dominio}</td>
+          <td><span class="sev ${r.sev}">${r.sev.toUpperCase()}</span></td>
+          <td>${r.on ? 'Activo' : 'Inactivo'}</td>
+          <td><button class="btn btn-ghost" data-regla="toggle" data-id="${r.id}">${r.on ? 'Desactivar' : 'Activar'}</button></td>
+        </tr>
+    `).join('');
+}
+
+function addNotification(icon, text) {
+    const newNotif = {
+        id: crypto.randomUUID(),
+        icon: icon,
+        text: text,
+        time: new Date().toLocaleTimeString()
+    };
+    AppState.notifications.unshift(newNotif);
+    if(AppState.notifications.length > 10) AppState.notifications.pop();
+    renderNotifications();
+}
+
+function renderNotifications() {
+    const count = AppState.notifications.length;
+    $('#notificationCount').textContent = count;
+    $('#notificationCount').classList.toggle('hidden', count === 0);
+    const list = $('#notificationList');
+    if (count === 0) {
+        list.innerHTML = `<div style="padding:20px; text-align:center;" class="muted">No hay notificaciones nuevas.</div>`;
+        return;
+    }
+    list.innerHTML = AppState.notifications.map(n => `
+        <div class="notification-item">
+            <div class="icon">${n.icon}</div>
+            <div>
+                ${n.text}
+                <div class="time">${n.time}</div>
+            </div>
+        </div>
+    `).join('');
+}
+
+// ======================================================
+// JOULE 2.0 ASSISTANT FUNCTIONS
+// ======================================================
+
+function renderJouleChat() {
+    const panel = $('#jouleChatPanel');
+    panel.classList.toggle('open', AppState.ui.jouleOpen);
+    const messagesContainer = $('#jouleMessages');
+    messagesContainer.innerHTML = AppState.ui.jouleMessages.map(msg => {
+        if (msg.type === 'action') {
+            const buttonsHtml = msg.actions.map(action => 
+                `<button class="btn btn-action" data-joule-action="${action.action}" data-payload='${JSON.stringify(action.payload)}'>${action.label}</button>`
+            ).join('');
+            return `<div class="msg-bubble joule joule-action">
+                        ${msg.text}
+                        <div class="action-buttons">${buttonsHtml}</div>
+                    </div>`;
+        }
+        return `<div class="msg-bubble ${msg.sender}">${msg.text}</div>`;
+    }).join('');
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+}
+
+function addJouleMessage(sender, text, type = 'text', actions = []) {
+    const message = { sender, text, type, actions };
+    AppState.ui.jouleMessages.push(message);
+    renderJouleChat();
+}
+
+function handleJouleQuery(text) {
+    addJouleMessage('user', text);
+    
+    // Simple keyword-based responses
+    setTimeout(() => {
+        if (text.toLowerCase().includes('horas extra')) {
+            addJouleMessage('joule', 'El área con más horas extra este mes es Operaciones, con un total de 145 horas. ¿Quieres ver un desglose detallado?');
+        } else if (text.toLowerCase().includes('vacaciones')) {
+            addJouleMessage('joule', 'Actualmente hay 5 solicitudes de vacaciones pendientes de aprobación para tu equipo.');
+        } else {
+            addJouleMessage('joule', 'No he entendido tu consulta. Puedo ayudarte con información sobre "horas extra" o "vacaciones".');
+        }
+    }, 500);
+}
+
+
+// ======================================================
+// EVENT HANDLERS & APP LOGIC
+// ======================================================
+function handleWizardNav(direction) {
+    const newStep = AppState.ui.wizardStep + direction;
+    if (newStep < 1 || newStep > 4) return;
+    
+    AppState.ui.wizardStep = newStep;
+    
+    $$('.wizard-step').forEach(s => s.classList.remove('active'));
+    $(`.wizard-step[data-step="${newStep}"]`).classList.add('active');
+    
+    $$('.step-pane').forEach(p => p.classList.remove('active'));
+    $(`.step-pane[data-pane="${newStep}"]`).classList.add('active');
+    
+    $('#wizardPrev').style.visibility = newStep > 1 ? 'visible' : 'hidden';
+    $('#wizardNext').classList.toggle('hidden', newStep === 4);
+    $('#wizardFinish').classList.toggle('hidden', newStep !== 4);
+}
+
+function handleRoleChange(e) {
+    AppState.role = e.target.value;
+    AppState.ui.currentPage = 'dashboard';
+    $$('.nav a').forEach(a => a.classList.remove('active'));
+    $('[data-nav="dashboard"]').classList.add('active');
+    renderAll();
+}
+
+function handleNavClick(e) {
+    const targetNav = e.target.closest('[data-nav]');
+    if (!targetNav) return;
+    
+    e.preventDefault();
+    AppState.ui.currentPage = targetNav.dataset.nav;
+    
+    $$('.nav a').forEach(a => a.classList.remove('active'));
+    targetNav.classList.add('active');
+    
+    renderAll();
+}
+
+function handleExceptionSelection() {
+    const selected = $$('.exception-checkbox:checked').length;
+    $('#batchActions').classList.toggle('hidden', selected === 0);
+}
+
+function setupEventListeners() {
+    $('#roleSelect').addEventListener('change', handleRoleChange);
+    $('#mainNav').addEventListener('click', handleNavClick);
+
+    $('#btnActualizar').addEventListener('click', () => {
+        addNotification('⚡', 'Datos sincronizados con SuccessFactors.');
+        generateMockData();
+        renderAll();
+    });
+
+    $('#wizardNext').addEventListener('click', () => handleWizardNav(1));
+    $('#wizardPrev').addEventListener('click', () => handleWizardNav(-1));
+
+    $('#notificationBell').addEventListener('click', () => {
+        AppState.ui.notificationPanelOpen = !AppState.ui.notificationPanelOpen;
+        $('#notificationPanel').classList.toggle('open', AppState.ui.notificationPanelOpen);
+        if(!AppState.ui.notificationPanelOpen) {
+            AppState.notifications = [];
+            renderNotifications();
+        }
+    });
+
+    // Joule Event Listeners
+    $('#jouleSendBtn').addEventListener('click', () => {
+        const input = $('#jouleUserInput');
+        if (input.value.trim()) {
+            handleJouleQuery(input.value.trim());
+            input.value = '';
+        }
+    });
+    $('#jouleUserInput').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') $('#jouleSendBtn').click();
+    });
+    
+    // Delegated event listener for dynamically created content and single-purpose actions
+    document.body.addEventListener('click', (e) => {
+        const target = e.target;
+        const action = target.closest('[data-action]');
+        const jouleAction = target.closest('[data-joule-action]');
+
+        if(jouleAction) {
+            const actionName = jouleAction.dataset.jouleAction;
+            const payload = JSON.parse(jouleAction.dataset.payload);
+            
+            if (actionName === 'confirm-resolve-exception') {
+                const exception = AppState.data.excepciones.find(ex => ex.id === payload.exceptionId);
+                if(exception) {
+                    exception.estado = 'res';
+                    const byId = Object.fromEntries(AppState.data.empleados.map(e => [e.id, e]));
+                    const empName = byId[exception.empId]?.nombre || 'el empleado';
+                    
+                    AppState.ui.jouleMessages = AppState.ui.jouleMessages.filter(m => m.type !== 'action');
+                    addJouleMessage('joule', `✅ ¡Hecho! He resuelto la excepción de ${empName}.`);
+                    
+                    if (AppState.ui.currentPage === 'excepciones') {
+                        renderExcepciones();
+                    }
+                    addNotification('✔️', `Excepción de ${empName} resuelta por Joule.`);
+                }
+            }
+            if (actionName === 'cancel-resolve') {
+                 AppState.ui.jouleMessages = AppState.ui.jouleMessages.filter(m => m.type !== 'action');
+                 addJouleMessage('joule', 'De acuerdo, he cancelado la acción. Puedes gestionarla manualmente.');
+            }
+        }
+
+
+        if (!action) return;
+
+        const actionName = action.dataset.action;
+
+        switch(actionName) {
+            case 'close-wizard':
+                $('#onboardingWizard').classList.remove('open');
+                break;
+            case 'toggle-customize-dash':
+                AppState.ui.customizeDashboard = !AppState.ui.customizeDashboard;
+                renderDashboard();
+                renderCharts();
+                break;
+            case 'toggle-joule':
+                AppState.ui.jouleOpen = !AppState.ui.jouleOpen;
+                if(AppState.ui.jouleOpen && AppState.ui.jouleMessages.length === 0) {
+                    setTimeout(()=> addJouleMessage('joule', 'Hola, soy Joule. ¿En qué puedo ayudarte hoy?'), 300);
+                }
+                renderJouleChat();
+                break;
+            case 'joule-resolve-exception': {
+                const exceptionId = action.dataset.id;
+                const exception = AppState.data.excepciones.find(ex => ex.id === exceptionId);
+                if(!exception) return;
+
+                const byId = Object.fromEntries(AppState.data.empleados.map(e => [e.id, e]));
+                const empName = byId[exception.empId]?.nombre || 'este empleado';
+                
+                const text = `Hola. Detecté que ${empName} tiene una fichada de entrada pero no de salida para el día ${exception.fecha}. Su última actividad fue a las 18:05. ¿Quieres que registre su salida a esa hora y resuelva la excepción?`;
+                const actions = [
+                    { label: 'Sí, registrar y resolver', action: 'confirm-resolve-exception', payload: { exceptionId: exception.id } },
+                    { label: 'No, cancelar', action: 'cancel-resolve', payload: {} }
+                ];
+
+                AppState.ui.jouleOpen = true;
+                AppState.ui.jouleMessages = []; // Clear previous messages
+                addJouleMessage('joule', text, 'action', actions);
+                break;
+            }
+            case 'test-sf-connection':
+                alert('Simulación: Conexión exitosa con SuccessFactors.');
+                break;
+            case 'save-sf-connection':
+                $('#sf-config-form').classList.add('hidden');
+                $('#sf-config-summary').classList.remove('hidden');
+                break;
+            case 'edit-sf-connection':
+                $('#sf-config-form').classList.remove('hidden');
+                $('#sf-config-summary').add('hidden');
+                break;
+            case 'apply-branding':
+                const logoFile = $('#logoUploader').files[0];
+                if (logoFile) {
+                    const reader = new FileReader();
+                    reader.onload = (e) => { $('#clientLogo').src = e.target.result; };
+                    reader.readAsDataURL(logoFile);
+                }
+                document.documentElement.style.setProperty('--bl-gold', '#D94B4B');
+                document.documentElement.style.setProperty('--bl-blue', '#5856d6');
+                addNotification('🎨', 'Nuevo branding aplicado exitosamente.');
+                renderAll();
+                break;
+            case 'add-rule-condition':
+                const div = document.createElement('div');
+                div.className = 'rule-line';
+                div.innerHTML = `
+                    <b style="color:var(--bl-gold)">Y</b>
+                    <select class="select"><option>Horas extra</option><option>Tipo de ausencia</option></select>
+                    <select class="select"><option>es mayor que</option><option>es igual a</option></select>
+                    <input type="text" class="input" placeholder="Valor" style="flex:0.5;">
+                    <select class="select" style="flex:0.5;"><option>Horas</option><option>Días</option></select>
+                    <button class="btn btn-err" data-action="remove-rule-condition">X</button>`;
+                $('#rule-conditions').appendChild(div);
+                break;
+            case 'remove-rule-condition':
+                target.closest('.rule-line').remove();
+                break;
+            case 'batch-resolve':
+                $$('.exception-checkbox:checked').forEach(cb => {
+                    const ex = AppState.data.excepciones.find(ex => ex.id === cb.dataset.id);
+                    if (ex) ex.estado = 'res';
+                });
+                renderExcepciones();
+                handleExceptionSelection();
+                break;
+            case 'select-all-exceptions':
+                $$('.exception-checkbox').forEach(cb => cb.checked = target.checked);
+                handleExceptionSelection();
+                break;
+            case 'view-audit-detail':
+                const auditEntry = AppState.data.auditoria.find(a => a.id === action.dataset.id);
+                if(auditEntry) {
+                    $('#auditEventId').textContent = auditEntry.id;
+                    $('#auditBefore').innerHTML = Object.entries(auditEntry.before).map(([k,v]) => `<div class="diff-line"><strong>${k}:</strong> <span>${v}</span></div>`).join('');
+                    $('#auditAfter').innerHTML = Object.entries(auditEntry.after).map(([k,v]) => `<div class="diff-line"><strong>${k}:</strong> <span class="changed">${v}</span></div>`).join('');
+                    $('#auditMetadata').innerHTML = `<div class="diff-line"><strong>Usuario:</strong> <span>${auditEntry.usuario}</span></div><div class="diff-line"><strong>Fecha:</strong> <span>${auditEntry.when}</span></div>`;
+                    $('#auditModal').classList.add('open');
+                }
+                break;
+            case 'close-audit-modal':
+                 $('#auditModal').classList.remove('open');
+                 break;
+        }
+        
+        // Handle clicks on elements without a specific data-action
+        if (target.classList.contains('exception-checkbox')) {
+            handleExceptionSelection();
+        }
+    });
+
+    $('#view-toggle-aprobaciones').addEventListener('click', (e) => {
+        const btn = e.target.closest('button[data-view]');
+        if(!btn) return;
+        
+        $$('#view-toggle-aprobaciones button').forEach(b => {
+            b.classList.remove('btn-ghost');
+            if(b !== btn) b.classList.add('btn-ghost');
+        });
+
+        const view = btn.dataset.view;
+        $('#approvals-cards-view').classList.toggle('hidden', view === 'calendar');
+        $('#approvals-calendar-view').classList.toggle('hidden', view !== 'calendar');
+    });
+}
+
+// ======================================================
+// APP INITIALIZATION
+// ======================================================
+document.addEventListener('DOMContentLoaded', () => {
+    generateMockData();
+    setupEventListeners();
+    handleRoleChange({target: {value: 'Manager'}}); // Set initial role
+    setTimeout(() => $('#onboardingWizard').classList.add('open'), 500); // Show wizard on first load
+});
+
+</script>
+</body>
+</html>
